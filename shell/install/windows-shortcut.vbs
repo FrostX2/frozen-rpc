@@ -6,9 +6,9 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 If Not fso.FolderExists(startMenu) Then fso.CreateFolder(startMenu)
 
 srcPath = fso.GetParentFolderName(WScript.ScriptFullName)
-rootPath = fso.GetParentFolderName(srcPath)
-iconPath = rootPath & "\img\icon.png"
-batPath = rootPath & "\frozen-rpc.bat"
+rootPath = fso.GetParentFolderName(fso.GetParentFolderName(srcPath))
+iconPath = rootPath & "\assets\icon.png"
+batPath = rootPath & "\shell\frozen-rpc.bat"
 
 Function MakeShortcut(folder, name, target, icon)
   Set sc = shell.CreateShortcut(folder & "\" & name & ".lnk")

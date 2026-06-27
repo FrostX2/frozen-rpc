@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
-DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
-APP="$DIR/other-distro/Frozen RPC.app"
-ICONSET="$DIR/other-distro/icon.iconset"
-ICON_PNG="$DIR/img/icon.png"
+APP="$DIR/shell/Frozen RPC.app"
+ICONSET="$DIR/shell/Frozen RPC.app/icon.iconset"
+ICON_PNG="$DIR/assets/icon.png"
 
 # Generate .icns from PNG if iconutil is available
 if command -v iconutil &>/dev/null && [ ! -f "$APP/Contents/Resources/icon.icns" ]; then
@@ -22,4 +22,4 @@ fi
 cp -r "$APP" ~/Applications/ 2>/dev/null || cp -r "$APP" /Applications/
 
 echo "Frozen RPC.app installed to your Applications folder!"
-echo "You can also find it in other-distro/Frozen RPC.app"
+echo "You can also find it in shell/Frozen RPC.app"

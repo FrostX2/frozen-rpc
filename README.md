@@ -19,11 +19,11 @@ Create a Discord application at https://discord.com/developers/applications and 
 Run the launcher for your OS:
 
 ```bash
-./frozen-rpc.sh      # Linux / macOS
-frozen-rpc.bat       # Windows (double-click)
+./shell/frozen-rpc.sh      # Linux / macOS
+shell\frozen-rpc.bat       # Windows (double-click)
 ```
 
-The launcher auto-detects your distro/OS and runs the right script from `other-distro/`.
+The launcher auto-detects your distro/OS and runs the right script from `shell/distro/`.
 
 ## Usage
 
@@ -48,9 +48,9 @@ Uses Discord Gateway with an OAuth2 token. No local client needed. Authorize an 
 
 | OS | File | How to install |
 |----|------|---------------|
-| Linux | `frozen-rpc.desktop` | Run `bash other-distro/linux-install-desktop.sh` |
-| macOS | `Frozen RPC.app` (in `other-distro/`) | Run `bash other-distro/macos-install-app.sh` |
-| Windows | `frozen-rpc.bat` + shortcut | Double-click `other-distro/windows-shortcut.vbs` |
+| Linux | `shell/frozen-rpc.desktop` | Run `bash shell/install/linux-install-desktop.sh` |
+| macOS | `shell/Frozen RPC.app` | Run `bash shell/install/macos-install-app.sh` |
+| Windows | `shell/frozen-rpc.bat` | Double-click `shell/install/windows-shortcut.vbs` |
 
 ## Build Installers
 
@@ -58,8 +58,8 @@ Uses Discord Gateway with an OAuth2 token. No local client needed. Authorize an 
 npm run dist:win         # Windows NSIS (.exe)
 npm run dist:linux       # Linux: AppImage + .deb + .rpm + .pacman
 npm run dist:mac         # macOS DMG + PKG
-npm run dist:flatpak     # Linux Flatpak (.flatpak)
-npm run dist:all         # All for current OS (via build-installers.sh)
+npm run dist:flatpak     # Linux Flatpak (.flatpak) — runs shell/install/build-flatpak.sh
+npm run dist:all         # All for current OS (via shell/build-installers.sh)
 ```
 
 | Format | OS | Output (in `../installer/`) |
@@ -69,7 +69,7 @@ npm run dist:all         # All for current OS (via build-installers.sh)
 | **DEB** | Linux (Debian/Ubuntu) | `frozen-rpc_*.deb` — `sudo dpkg -i` |
 | **RPM** | Linux (Fedora/RHEL) | `frozen-rpc-*.rpm` — `sudo rpm -i` |
 | **pacman** | Linux (Arch) | `frozen-rpc-*.pkg.tar.zst` — `sudo pacman -U` |
-| **Flatpak** | Linux (any) | `frozen-rpc.flatpak` (in `flatpak/`) — `flatpak --user install` |
+| **Flatpak** | Linux (any) | `frozen-rpc.flatpak` (in `installer/`) — `flatpak --user install` |
 | **DMG** | macOS | `Frozen RPC-*.dmg` — drag to Applications |
 | **PKG** | macOS | `Frozen RPC-*.pkg` — double-click installer |
 

@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -e
-DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$DIR"
-exec bash frozen-rpc.sh

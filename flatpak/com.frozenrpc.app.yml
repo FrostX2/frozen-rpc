@@ -26,6 +26,6 @@ modules:
           - .git
           - flatpak
     post-install:
-      - install -Dm644 /app/img/icon.png /app/share/icons/hicolor/1000x1000/apps/com.frozenrpc.app.png
+      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/1000x1000/apps/com.frozenrpc.app.png
       - install -Dm644 /app/flatpak/com.frozenrpc.app.desktop /app/share/applications/com.frozenrpc.app.desktop
       - install -Dm644 /app/flatpak/com.frozenrpc.app.appdata.xml /app/share/appdata/com.frozenrpc.app.appdata.xml

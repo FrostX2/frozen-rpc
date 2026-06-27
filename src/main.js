@@ -3,14 +3,14 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
 import { createServer } from "http";
-import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog, getLogPath } from "../src/logger.js";
-import { initDB, getAccounts, saveAccount, deleteAccount, getPresets, savePreset, deletePreset, exportAllData, importAllData } from "../src/db.js";
-import { buildAuthURL, exchangeCode, fetchDiscordUser } from "../src/auth.js";
-import { startLocalRPC, startGatewayRPC, stopRPC, updateActivity, isConnected, getMode } from "../src/rpc.js";
+import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog, getLogPath } from "./logger.js";
+import { initDB, getAccounts, saveAccount, deleteAccount, getPresets, savePreset, deletePreset, exportAllData, importAllData } from "./db.js";
+import { buildAuthURL, exchangeCode, fetchDiscordUser } from "./auth.js";
+import { startLocalRPC, startGatewayRPC, stopRPC, updateActivity, isConnected, getMode } from "./rpc.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = join(__dirname, "..", "config", "config.json");
-const ICON_PATH = join(__dirname, "..", "img", "icon.png");
+const ICON_PATH = join(__dirname, "..", "assets", "icon.png");
 
 let mainWindow = null;
 let tray = null;

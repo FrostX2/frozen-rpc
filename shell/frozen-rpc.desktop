@@ -2,8 +2,8 @@
 [Desktop Entry]
 Name=Frozen RPC
 Comment=Discord Rich Presence injector
-Exec=bash -c "cd $(dirname %k) && ./frozen-rpc.sh"
-Icon=img/icon.png
+Exec=bash -c "cd $(dirname %k) && ./shell/frozen-rpc.sh"
+Icon=assets/icon.png
 Terminal=false
 Type=Application
 Categories=Network;Utility;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-DIR="$(cd "$(dirname "$0")" && pwd)"
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "╔══════════════════════════════════════════╗"
 echo "║   Frozen RPC - Build All Installers     ║"
@@ -17,7 +17,7 @@ case "$OS" in
     echo ""
     echo "[2/3] Building Flatpak..."
     if command -v flatpak-builder &>/dev/null; then
-      bash "$DIR/flatpak/build.sh"
+      bash "$DIR/shell/install/build-flatpak.sh"
     else
       echo "  → SKIP: flatpak-builder not installed"
     fi
@@ -25,9 +25,9 @@ case "$OS" in
     echo ""
     echo "[3/3] Copying launcher scripts..."
     mkdir -p "$DIR/installer/launcher"
-    cp "$DIR/frozen-rpc.sh" "$DIR/installer/launcher/"
-    cp "$DIR/frozen-rpc.desktop" "$DIR/installer/launcher/"
-    cp -r "$DIR/other-distro" "$DIR/installer/launcher/"
+    cp "$DIR/shell/frozen-rpc.sh" "$DIR/installer/launcher/"
+    cp "$DIR/shell/frozen-rpc.desktop" "$DIR/installer/launcher/"
+    cp -r "$DIR/shell/distro" "$DIR/installer/launcher/"
     echo "  → installer/launcher/"
     ;;
 

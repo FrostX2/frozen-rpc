@@ -2,7 +2,7 @@
   "name": "frozen-rpc",
   "version": "1.0.0",
   "description": "Cross-platform desktop Discord Rich Presence injector",
-  "main": "electron/main.js",
+  "main": "src/main.js",
   "type": "module",
   "scripts": {
     "start": "electron .",
@@ -34,15 +34,14 @@
       "output": "../installer"
     },
     "files": [
-      "electron/**/*",
-      "renderer/**/*",
       "src/**/*",
-      "img/**/*",
+      "renderer/**/*",
+      "assets/**/*",
       "config/**/*",
       "package.json"
     ],
     "win": {
-      "icon": "img/icon.png",
+      "icon": "assets/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -61,7 +60,7 @@
       "artifactName": "Frozen-RPC-Setup-${version}.${ext}"
     },
     "linux": {
-      "icon": "img/icon.png",
+      "icon": "assets/icon.png",
       "target": [
         "AppImage",
         "deb",
@@ -74,7 +73,7 @@
       "description": "Cross-platform desktop app for custom Discord Rich Presence with OAuth2 injection."
     },
     "mac": {
-      "icon": "img/icon.png",
+      "icon": "assets/icon.png",
       "target": ["dmg", "pkg"],
       "category": "public.app-category.utilities"
     }

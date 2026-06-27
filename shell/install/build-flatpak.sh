@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-DIR="$(cd "$(dirname "$0")/.." && pwd)"
+DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 echo "=== Building Frozen RPC Flatpak ==="
 echo ""

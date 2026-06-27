@@ -8,19 +8,19 @@ OS="$(uname -s)"
 
 case "$OS" in
   Darwin)
-    exec bash other-distro/macos.sh
+    exec bash shell/distro/macos.sh
     ;;
   Linux)
     if command -v apt &>/dev/null; then
-      exec bash other-distro/linux-debian.sh
+      exec bash shell/distro/linux-debian.sh
     elif command -v dnf &>/dev/null; then
-      exec bash other-distro/linux-fedora.sh
+      exec bash shell/distro/linux-fedora.sh
     elif command -v pacman &>/dev/null; then
-      exec bash other-distro/linux-arch.sh
+      exec bash shell/distro/linux-arch.sh
     elif command -v zypper &>/dev/null; then
-      exec bash other-distro/linux-opensuse.sh
+      exec bash shell/distro/linux-opensuse.sh
     else
-      exec bash other-distro/linux-generic.sh
+      exec bash shell/distro/linux-generic.sh
     fi
     ;;
   *)
