@@ -65,7 +65,11 @@
         "AppImage",
         "deb",
         "rpm",
-        "pacman"
+        {
+          "target": "pacman",
+          "arch": ["x64"],
+          "artifactName": "${name}-${version}.pkg.tar.zst"
+        }
       ],
       "category": "Network",
       "synopsis": "Discord Rich Presence injector",
