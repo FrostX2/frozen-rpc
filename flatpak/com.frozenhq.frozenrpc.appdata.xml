@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.frozenrpc.app</id>
+  <id>com.frozenhq.frozenrpc</id>
   <name>Frozen RPC</name>
   <summary>Discord Rich Presence injector</summary>
   <description>

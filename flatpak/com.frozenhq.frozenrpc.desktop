@@ -3,7 +3,7 @@
 Name=Frozen RPC
 Comment=Discord Rich Presence injector
 Exec=frozen-rpc
-Icon=com.frozenrpc.app
+Icon=com.frozenhq.frozenrpc
 Terminal=false
 Type=Application
 Categories=Network;Utility;

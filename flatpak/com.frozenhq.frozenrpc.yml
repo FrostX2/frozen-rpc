@@ -1,4 +1,4 @@
-app-id: com.frozenrpc.app
+app-id: com.frozenhq.frozenrpc
 base: org.electronjs.Electron2.BaseApp
 base-version: '24.08'
 runtime: org.freedesktop.Platform
@@ -29,8 +29,8 @@ modules:
           - dist
           - .git
     post-install:
-      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/512x512/apps/com.frozenrpc.app.png
-      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/256x256/apps/com.frozenrpc.app.png
-      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/128x128/apps/com.frozenrpc.app.png
-      - install -Dm644 /app/flatpak/com.frozenrpc.app.desktop /app/share/applications/com.frozenrpc.app.desktop
-      - install -Dm644 /app/flatpak/com.frozenrpc.app.appdata.xml /app/share/appdata/com.frozenrpc.app.appdata.xml
+      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/512x512/apps/com.frozenhq.frozenrpc.png
+      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/256x256/apps/com.frozenhq.frozenrpc.png
+      - install -Dm644 /app/assets/icon.png /app/share/icons/hicolor/128x128/apps/com.frozenhq.frozenrpc.png
+      - install -Dm644 /app/flatpak/com.frozenhq.frozenrpc.desktop /app/share/applications/com.frozenhq.frozenrpc.desktop
+      - install -Dm644 /app/flatpak/com.frozenhq.frozenrpc.appdata.xml /app/share/appdata/com.frozenhq.frozenrpc.appdata.xml
