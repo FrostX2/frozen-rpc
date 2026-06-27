@@ -5,6 +5,7 @@ import {
   updateGatewayActivity,
   isGatewayConnected,
 } from "./gateway.js";
+import { logInfo, logWarn, logError } from "./logger.js";
 
 let localRpc = null;
 let mode = null;
@@ -55,14 +56,16 @@ function createLocalClient() {
   localRpc = new Client({ transport: "ipc" });
 
   localRpc.on("ready", () => {
+    logInfo("Local RPC client ready");
     reconnectAttempts = 0;
     if (currentConfig) {
-      localRpc.setActivity(buildActivity(currentConfig)).catch(() => {});
+      localRpc.setActivity(buildActivity(currentConfig)).catch((err) => logError("setActivity", err));
     }
     if (onStatusChange) onStatusChange({ connected: true, message: "Connected (local)" });
   });
 
   localRpc.on("disconnected", () => {
+    logWarn("Local RPC disconnected");
     localRpc = null;
     if (onStatusChange) onStatusChange({ connected: false, message: "Disconnected from Discord" });
     scheduleReconnect();
@@ -80,6 +83,8 @@ function scheduleReconnect() {
     INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1),
     MAX_RECONNECT_DELAY
   );
+
+  logInfo(`Reconnect scheduled in ${Math.round(delay / 1000)}s (attempt ${reconnectAttempts})`);
 
   if (onStatusChange) {
     onStatusChange({ connected: false, message: `Reconnecting in ${Math.round(delay / 1000)}s...` });
@@ -112,11 +117,12 @@ function connect() {
   }
 
   createLocalClient();
-  localRpc.login({ clientId }).catch(() => {});
+  localRpc.login({ clientId }).catch((err) => logError("local login", err));
   return true;
 }
 
 export function startLocalRPC(id, config, statusCallback) {
+  logInfo(`startLocalRPC called with clientId: ${id}`);
   stopRPC();
   mode = "local";
   clientId = id;
@@ -127,6 +133,7 @@ export function startLocalRPC(id, config, statusCallback) {
 }
 
 export function startGatewayRPC(token, config, statusCallback) {
+  logInfo("startGatewayRPC called");
   stopRPC();
   mode = "gateway";
   clientId = token;
@@ -137,6 +144,7 @@ export function startGatewayRPC(token, config, statusCallback) {
 }
 
 export function stopRPC() {
+  logInfo("Stopping RPC...");
   cancelReconnect();
   if (mode === "gateway") {
     disconnectGateway();

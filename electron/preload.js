@@ -29,6 +29,11 @@ contextBridge.exposeInMainWorld("rpcAPI", {
   exportData: () => ipcRenderer.invoke("export-data"),
   importData: () => ipcRenderer.invoke("import-data"),
 
+  // Logs
+  getLog: () => ipcRenderer.invoke("get-log"),
+  clearLog: () => ipcRenderer.invoke("clear-log"),
+  openLogFolder: () => ipcRenderer.invoke("open-log-folder"),
+
   // Events
   onStatusChange: (callback) => {
     ipcRenderer.on("rpc-status", (_event, status) => callback(status));

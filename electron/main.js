@@ -3,6 +3,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
 import { createServer } from "http";
+import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog, getLogPath } from "../src/logger.js";
 import { initDB, getAccounts, saveAccount, deleteAccount, getPresets, savePreset, deletePreset, exportAllData, importAllData } from "../src/db.js";
 import { buildAuthURL, exchangeCode, fetchDiscordUser } from "../src/auth.js";
 import { startLocalRPC, startGatewayRPC, stopRPC, updateActivity, isConnected, getMode } from "../src/rpc.js";
@@ -16,9 +17,13 @@ let tray = null;
 function loadAppConfig() {
   try {
     if (existsSync(CONFIG_PATH)) {
-      return JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
+      const data = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
+      logInfo("App config loaded");
+      return data;
     }
-  } catch {}
+  } catch (err) {
+    logError("loadAppConfig", err);
+  }
   return { clientId: "", clientSecret: "", redirectUri: "http://localhost:53173/callback" };
 }
 
@@ -26,6 +31,7 @@ function saveAppConfig(cfg) {
   const dir = join(__dirname, "..", "config");
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
+  logInfo("App config saved");
 }
 
 function createTray() {
@@ -70,9 +76,16 @@ function createWindow() {
       mainWindow.hide();
     }
   });
+
+  mainWindow.webContents.on("console-message", (_event, level, message) => {
+    if (level >= 2) logError("renderer", new Error(message));
+    else logInfo(`renderer: ${message}`);
+  });
 }
 
 app.on("ready", () => {
+  initLogger();
+  logInfo("App starting...");
   initDB();
   createTray();
   createWindow();
@@ -105,6 +118,7 @@ ipcMain.handle("get-accounts", () => getAccounts());
 
 ipcMain.handle("delete-account", (_e, id) => {
   deleteAccount(id);
+  logInfo(`Account deleted: ${id}`);
   return { success: true };
 });
 
@@ -112,6 +126,7 @@ ipcMain.handle("delete-account", (_e, id) => {
 
 ipcMain.handle("start-oauth", async (_e, { clientId, clientSecret, redirectUri }) => {
   try {
+    logInfo("Starting OAuth flow...");
     const tokenData = await startAuthServer(clientId, clientSecret, redirectUri);
     const user = await fetchDiscordUser(tokenData.access_token);
 
@@ -124,8 +139,10 @@ ipcMain.handle("start-oauth", async (_e, { clientId, clientSecret, redirectUri }
       expires_at: Date.now() + tokenData.expires_in * 1000,
     });
 
+    logInfo(`OAuth success: ${user.username} (${user.id})`);
     return { success: true, user };
   } catch (err) {
+    logError("OAuth", err);
     return { success: false, error: err.message };
   }
 });
@@ -166,6 +183,7 @@ function startAuthServer(clientId, clientSecret, redirectUri) {
 
     server.listen(53173, () => {
       const authUrl = buildAuthURL(clientId, redirectUri);
+      logInfo(`Opening browser for OAuth: ${authUrl}`);
       shell.openExternal(authUrl);
     });
 
@@ -177,33 +195,42 @@ function startAuthServer(clientId, clientSecret, redirectUri) {
 
 ipcMain.handle("start-local-rpc", async (_e, id, config) => {
   try {
+    logInfo(`Starting local RPC (clientId: ${id})`);
     startLocalRPC(id, config, (status) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("rpc-status", status);
       }
       updateTrayMenu(status.connected);
+      if (status.connected) logInfo("Local RPC connected");
+      else logWarn(`Local RPC: ${status.message}`);
     });
     return { success: true };
   } catch (err) {
+    logError("start-local-rpc", err);
     return { success: false, error: err.message };
   }
 });
 
 ipcMain.handle("start-gateway-rpc", async (_e, token, config) => {
   try {
+    logInfo("Starting Gateway RPC...");
     startGatewayRPC(token, config, (status) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("rpc-status", status);
       }
       updateTrayMenu(status.connected);
+      if (status.connected) logInfo("Gateway RPC connected");
+      else logWarn(`Gateway: ${status.message}`);
     });
     return { success: true };
   } catch (err) {
+    logError("start-gateway-rpc", err);
     return { success: false, error: err.message };
   }
 });
 
 ipcMain.handle("stop-rpc", () => {
+  logInfo("Stopping RPC...");
   stopRPC();
   updateTrayMenu(false);
   return { success: true };
@@ -212,8 +239,10 @@ ipcMain.handle("stop-rpc", () => {
 ipcMain.handle("update-activity", async (_e, config) => {
   try {
     await updateActivity(config);
+    logInfo("Activity updated");
     return { success: true };
   } catch (err) {
+    logError("update-activity", err);
     return { success: false, error: err.message };
   }
 });
@@ -226,11 +255,14 @@ ipcMain.handle("get-mode", () => getMode());
 ipcMain.handle("get-presets", () => getPresets());
 
 ipcMain.handle("save-preset", (_e, name, config) => {
-  return savePreset(name, config);
+  const id = savePreset(name, config);
+  logInfo(`Preset saved: "${name}" (id: ${id})`);
+  return id;
 });
 
 ipcMain.handle("delete-preset", (_e, id) => {
   deletePreset(id);
+  logInfo(`Preset deleted: ${id}`);
   return { success: true };
 });
 
@@ -244,6 +276,7 @@ ipcMain.handle("export-data", async () => {
   if (!filePath) return { success: false };
   const data = exportAllData();
   writeFileSync(filePath, JSON.stringify(data, null, 2));
+  logInfo(`Data exported to ${filePath}`);
   return { success: true, path: filePath };
 });
 
@@ -255,5 +288,20 @@ ipcMain.handle("import-data", async () => {
   if (!filePaths?.length) return { success: false };
   const raw = readFileSync(filePaths[0], "utf-8");
   importAllData(JSON.parse(raw));
+  logInfo(`Data imported from ${filePaths[0]}`);
+  return { success: true };
+});
+
+// ── Logs ──
+
+ipcMain.handle("get-log", () => getLogContent());
+
+ipcMain.handle("clear-log", () => {
+  clearLog();
+  return { success: true };
+});
+
+ipcMain.handle("open-log-folder", () => {
+  shell.openPath(join(__dirname, "..", "logs"));
   return { success: true };
 });

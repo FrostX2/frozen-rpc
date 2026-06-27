@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { existsSync, mkdirSync } from "fs";
+import { logInfo, logError } from "./logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dbPath = join(__dirname, "..", "rpc.db");
@@ -9,32 +9,36 @@ const dbPath = join(__dirname, "..", "rpc.db");
 let db;
 
 export function initDB() {
-  db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
+  try {
+    db = new Database(dbPath);
+    db.pragma("journal_mode = WAL");
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+      CREATE TABLE IF NOT EXISTS accounts (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
+        avatar TEXT,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT,
+        expires_at INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS presets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        config TEXT NOT NULL,
+        created_at INTEGER DEFAULT (unixepoch())
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS accounts (
-      id TEXT PRIMARY KEY,
-      username TEXT NOT NULL,
-      avatar TEXT,
-      access_token TEXT NOT NULL,
-      refresh_token TEXT,
-      expires_at INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS presets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      config TEXT NOT NULL,
-      created_at INTEGER DEFAULT (unixepoch())
-    );
-  `);
-
+    logInfo(`Database initialized: ${dbPath}`);
+  } catch (err) {
+    logError("Database init", err);
+    throw err;
+  }
   return db;
 }
 
@@ -65,6 +69,7 @@ export function saveAccount(account) {
     INSERT OR REPLACE INTO accounts (id, username, avatar, access_token, refresh_token, expires_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(account.id, account.username, account.avatar || null, account.access_token, account.refresh_token || null, account.expires_at || null);
+  logInfo(`Account saved: ${account.username} (${account.id})`);
 }
 
 export function deleteAccount(id) {
@@ -83,9 +88,11 @@ export function savePreset(name, config) {
   const existing = getDB().prepare("SELECT id FROM presets WHERE name = ?").get(name);
   if (existing) {
     getDB().prepare("UPDATE presets SET config = ?, created_at = unixepoch() WHERE id = ?").run(JSON.stringify(config), existing.id);
+    logInfo(`Preset updated: "${name}"`);
     return existing.id;
   }
   const result = getDB().prepare("INSERT INTO presets (name, config) VALUES (?, ?)").run(name, JSON.stringify(config));
+  logInfo(`Preset created: "${name}"`);
   return result.lastInsertRowid;
 }
 
@@ -102,16 +109,16 @@ export function exportAllData() {
 }
 
 export function importAllData(data) {
-  const db = getDB();
-  const tx = db.transaction(() => {
+  const database = getDB();
+  const tx = database.transaction(() => {
     if (data.config) {
       for (const row of data.config) {
-        db.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(row.key, row.value);
+        database.prepare("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(row.key, row.value);
       }
     }
     if (data.accounts) {
       for (const acc of data.accounts) {
-        db.prepare(`
+        database.prepare(`
           INSERT OR REPLACE INTO accounts (id, username, avatar, access_token, refresh_token, expires_at)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(acc.id, acc.username, acc.avatar, acc.access_token, acc.refresh_token, acc.expires_at);
@@ -119,7 +126,7 @@ export function importAllData(data) {
     }
     if (data.presets) {
       for (const p of data.presets) {
-        db.prepare(`
+        database.prepare(`
           INSERT OR REPLACE INTO presets (id, name, config, created_at)
           VALUES (?, ?, ?, ?)
         `).run(p.id, p.name, p.config, p.created_at);
@@ -127,4 +134,5 @@ export function importAllData(data) {
     }
   });
   tx();
+  logInfo("Data imported successfully");
 }

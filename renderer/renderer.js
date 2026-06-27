@@ -342,6 +342,26 @@ document.addEventListener("DOMContentLoaded", async () => {
     await window.rpcAPI.saveAppConfig(cfg);
   });
 
+  async function loadLog() {
+    $("logViewer").value = await window.rpcAPI.getLog();
+    $("logViewer").scrollTop = $("logViewer").scrollHeight;
+  }
+
+  $("openLogBtn").addEventListener("click", () => window.rpcAPI.openLogFolder());
+  $("refreshLogBtn").addEventListener("click", loadLog);
+  $("clearLogBtn").addEventListener("click", async () => {
+    await window.rpcAPI.clearLog();
+    loadLog();
+  });
+
+  // Auto-refresh log every 3s when on Settings tab
+  setInterval(async () => {
+    const settingsTab = document.getElementById("tab-settings");
+    if (settingsTab && settingsTab.classList.contains("active")) {
+      loadLog();
+    }
+  }, 3000);
+
   // ── Init ──
 
   const appConfig = await window.rpcAPI.getAppConfig();

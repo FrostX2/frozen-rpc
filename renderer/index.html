@@ -225,11 +225,21 @@
     <div class="tab-content" id="tab-settings">
       <fieldset>
         <legend>App Settings</legend>
-        <p class="muted">Data is stored in <code>rpc.db</code> and <code>config/config.json</code>.</p>
+        <p class="muted">Data stored in <code>rpc.db</code> and <code>config/config.json</code>.</p>
         <div class="form-group">
           <label for="settingsClientId">Default Client ID</label>
           <input type="text" id="settingsClientId" placeholder="For local mode">
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Logs</legend>
+        <div class="actions" style="padding:0 0 8px">
+          <button id="openLogBtn" class="btn secondary">Open Log Folder</button>
+          <button id="refreshLogBtn" class="btn secondary">Refresh</button>
+          <button id="clearLogBtn" class="btn danger">Clear Log</button>
+        </div>
+        <textarea id="logViewer" readonly style="width:100%;height:200px;background:#11111b;color:#a6adc8;border:1px solid #313244;border-radius:5px;padding:8px;font-size:11px;font-family:monospace;resize:none"></textarea>
       </fieldset>
     </div>
 

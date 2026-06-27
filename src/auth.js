@@ -1,3 +1,5 @@
+import { logInfo, logError } from "./logger.js";
+
 const TOKEN_URL = "https://discord.com/api/oauth2/token";
 
 export function buildAuthURL(clientId, redirectUri) {
@@ -11,6 +13,8 @@ export function buildAuthURL(clientId, redirectUri) {
 }
 
 export async function exchangeCode(code, clientId, clientSecret, redirectUri) {
+  logInfo("Exchanging auth code for token...");
+
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -30,13 +34,17 @@ export async function exchangeCode(code, clientId, clientSecret, redirectUri) {
     throw new Error(`Token exchange failed: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const data = await res.json();
+  logInfo("Token exchange successful");
+  return data;
 }
 
 export async function refreshToken(tokenData, clientId, clientSecret) {
   if (!tokenData.refresh_token) {
     throw new Error("No refresh token available");
   }
+
+  logInfo("Refreshing token...");
 
   const body = new URLSearchParams({
     client_id: clientId,
@@ -56,10 +64,14 @@ export async function refreshToken(tokenData, clientId, clientSecret) {
     throw new Error(`Token refresh failed: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const data = await res.json();
+  logInfo("Token refreshed");
+  return data;
 }
 
 export async function fetchDiscordUser(accessToken) {
+  logInfo("Fetching Discord user info...");
+
   const res = await fetch("https://discord.com/api/users/@me", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -69,5 +81,7 @@ export async function fetchDiscordUser(accessToken) {
     throw new Error(`Failed to fetch user: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const user = await res.json();
+  logInfo(`User fetched: ${user.username} (${user.id})`);
+  return user;
 }
