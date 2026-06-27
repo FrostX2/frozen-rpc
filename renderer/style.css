@@ -21,7 +21,10 @@ body {
 h1 {
   font-size:17px; font-weight:600; text-align:center;
   color:#cba6f7; margin-bottom:6px;
+  display:flex; align-items:center; justify-content:center; gap:6px;
 }
+
+.title-gif { width:28px; height:28px; border-radius:4px; }
 
 .status-bar {
   text-align:center; margin-bottom:8px; font-size:13px;

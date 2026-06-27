@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld("rpcAPI", {
   clearLog: () => ipcRenderer.invoke("clear-log"),
   openLogFolder: () => ipcRenderer.invoke("open-log-folder"),
 
+  // Auto-Update
+  checkForUpdate: () => ipcRenderer.invoke("check-for-update"),
+
   // Events
   onStatusChange: (callback) => {
     ipcRenderer.on("rpc-status", (_event, status) => callback(status));

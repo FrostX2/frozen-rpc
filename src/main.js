@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, dialog, shell, nativeImage } from "electron";
+import { app, BrowserWindow, ipcMain, Tray, Menu, dialog, shell, nativeImage, net } from "electron";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, existsSync, writeFileSync, mkdirSync } from "fs";
@@ -306,4 +306,25 @@ ipcMain.handle("clear-log", () => {
 ipcMain.handle("open-log-folder", () => {
   shell.openPath(join(__dirname, "..", "logs"));
   return { success: true };
+});
+
+// ── Auto-Update ──
+
+ipcMain.handle("check-for-update", async () => {
+  try {
+    const req = net.fetch("https://api.github.com/repos/FrostX2/frosty-rpc/releases/latest", {
+      headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "FrozenRPC" },
+    });
+    const res = await req;
+    if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+    const data = await res.json();
+    const latest = data.tag_name.replace(/^v/, "");
+    const current = app.getVersion();
+    const hasUpdate = latest !== current;
+    logInfo(`Update check: current=${current} latest=${latest} hasUpdate=${hasUpdate}`);
+    return { success: true, hasUpdate, current, latest, url: data.html_url, releaseName: data.name };
+  } catch (err) {
+    logError("check-for-update", err);
+    return { success: false, error: err.message };
+  }
 });

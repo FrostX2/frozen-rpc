@@ -362,6 +362,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }, 3000);
 
+  // ── Auto-Update ──
+
+  $("checkUpdateBtn").addEventListener("click", async () => {
+    $("checkUpdateBtn").textContent = "Checking...";
+    $("checkUpdateBtn").disabled = true;
+    const result = await window.rpcAPI.checkForUpdate();
+    $("checkUpdateBtn").textContent = "Check for Update";
+    $("checkUpdateBtn").disabled = false;
+
+    const status = $("updateStatus");
+    if (!result.success) {
+      status.textContent = "Failed to check: " + (result.error || "Unknown error");
+      status.style.color = "#f38ba8";
+      return;
+    }
+    if (result.hasUpdate) {
+      status.innerHTML = `Update available: <strong>${result.latest}</strong> (yours: ${result.current}) — <a href="${result.url}" target="_blank" style="color:#89b4fa;">Download</a>`;
+      status.style.color = "#a6e3a1";
+    } else {
+      status.textContent = `You're up to date (${result.current})`;
+      status.style.color = "#a6adc8";
+    }
+  });
+
   // ── Init ──
 
   const appConfig = await window.rpcAPI.getAppConfig();

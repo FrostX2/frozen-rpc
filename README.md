@@ -12,11 +12,51 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square">
-  <img src="https://img.shields.io/github/package-json/v/FrostX2/frosty-rpc?style=flat-square&color=blueviolet">
+  <img src="https://img.shields.io/github/v/release/FrostX2/frosty-rpc?style=flat-square&color=blueviolet&label=version">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
   <img src="https://img.shields.io/badge/electron-42.x-47848F?style=flat-square&logo=electron">
   <img src="https://img.shields.io/badge/discord-rpc-5865F2?style=flat-square&logo=discord">
 </p>
+
+---
+
+## 📥 Get Frozen RPC
+
+<table>
+<tr>
+<td width="50%" align="center">
+
+### ⬇️ Download Release
+
+Grab the latest package for your OS:
+
+[**View Releases →**](https://github.com/FrostX2/frosty-rpc/releases)
+
+| OS | Format |
+|----|--------|
+| 🪟 Windows | `.exe` installer |
+| 🐧 Linux | `.AppImage` / `.deb` / `.rpm` / `.pacman` / `.flatpak` |
+| 🍎 macOS | `.dmg` / `.pkg` |
+
+</td>
+<td width="50%" align="center">
+
+### 🔧 Build from Source
+
+```bash
+git clone https://github.com/FrostX2/frosty-rpc.git
+cd frosty-rpc
+npm install
+npm run dist:all    # builds for your OS
+```
+
+Installers land in `../installer/`
+
+[**Build Script →**](shell/build-installers.sh)
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -75,52 +115,38 @@
 ## 🚀 Quick Start
 
 ```bash
-# 1. Clone & install
-git clone https://github.com/FrostX2/frosty-rpc.git
-cd frosty-rpc
-npm install
-
-# 2. Launch
+# From source
 npm start
 ```
 
-### Or use the universal launcher:
-
+Or use the universal launcher:
 ```bash
 ./shell/frozen-rpc.sh      # Linux / macOS
 shell\frozen-rpc.bat       # Windows
 ```
 
-> The launcher auto-detects your distro/OS and handles dependencies automatically.
+> Launcher auto-detects your distro and handles dependencies.
 
 ---
 
 ## 📖 Usage Guide
 
-### 1️⃣ Configure App
-Go to **Settings** tab → enter your Discord Client ID & Secret
-
-### 2️⃣ Authorize (Inject Mode)
-Go to **Accounts** tab → click **Login with Discord** → authorize in browser
-
-### 3️⃣ Set Your Presence
-Go to **RPC** tab → fill in your rich presence → choose mode → **Connect**
-
-### 4️⃣ Minimize to Tray
-Presence keeps running while the app sits in your system tray.
+1. **Settings** → enter your Discord Client ID & Secret
+2. **Accounts** → **Login with Discord** → authorize
+3. **RPC** → fill in presence → choose mode → **Connect**
+4. Minimize to tray — presence keeps running
 
 ### Mode Comparison
 
 | Local Mode | Inject Mode |
 |------------|-------------|
-| Requires Discord client running | No local client needed |
-| Uses IPC transport | Uses Gateway WebSocket |
-| Just needs Client ID | Needs OAuth2 token |
-| Limited to single client | Any account, anywhere |
+| Requires Discord client | No local client needed |
+| IPC transport | Gateway WebSocket |
+| Just Client ID | OAuth2 token required |
 
 ---
 
-## 📦 Installers
+## 📦 Build Your Own
 
 | Command | Produces |
 |---------|----------|
@@ -130,20 +156,22 @@ Presence keeps running while the app sits in your system tray.
 | `npm run dist:flatpak` | Flatpak bundle (`.flatpak`) |
 | `npm run dist:all` | Everything for current OS |
 
-All installers land in `../installer/` (project parent directory).
+### Install Format Reference
 
-### Platform Details
-
-| Format | OS | Install |
-|--------|----|---------|
-| 🪟 **NSIS** | Windows | `Frozen-RPC-Setup-*.exe` — auto-installs to `%APPDATA%`, Start Menu + Desktop shortcuts |
-| 🐧 **AppImage** | Linux | `Frozen RPC-*.AppImage` — portable, double-click |
+| Format | OS | Install Command |
+|--------|----|-----------------|
+| 🪟 **NSIS** | Windows | Double-click `.exe` |
+| 🐧 **AppImage** | Linux | `chmod +x && ./Frozen RPC-*.AppImage` |
 | 🐧 **DEB** | Debian/Ubuntu | `sudo dpkg -i frozen-rpc_*.deb` |
 | 🐧 **RPM** | Fedora/RHEL | `sudo rpm -i frozen-rpc-*.rpm` |
 | 🐧 **Pacman** | Arch | `sudo pacman -U frozen-rpc-*.pkg.tar.zst` |
 | 🐧 **Flatpak** | Any Linux | `flatpak --user install frozen-rpc.flatpak` |
 | 🍎 **DMG** | macOS | Drag to Applications |
 | 🍎 **PKG** | macOS | Double-click installer |
+
+---
+
+> **Want a specific format?** Run `npm run dist:linux -- --linux AppImage` for just AppImage, or check the [build script](shell/build-installers.sh).
 
 ---
 
@@ -170,9 +198,8 @@ All installers land in `../installer/` (project parent directory).
 
 ## 🛠️ Requirements
 
-- **Node.js** 18+ ([download](https://nodejs.org))
+- **Node.js** 18+
 - **Discord desktop client** — only needed for Local mode
-- **npm** — ships with Node.js
 
 ---
 
@@ -193,5 +220,6 @@ frosty-rpc/
 
 <p align="center">
   <sub>Built with ❤️ using Electron + discord-rpc + better-sqlite3</sub><br>
-  <sub>MIT License · © FrostX2</sub>
+  <sub>MIT License · © NotFrost</sub><br>
+  <sub><a href="https://github.com/FrostX2/frosty-rpc/releases">Releases</a> · <a href="https://github.com/FrostX2/frosty-rpc">GitHub</a></sub>
 </p>

@@ -9,7 +9,7 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>Frozen RPC</h1>
+    <h1><img src="../assets/asset.gif" class="title-gif"> Frozen RPC</h1>
     <div class="status-bar">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">Disconnected</span>
@@ -229,6 +229,15 @@
         <div class="form-group">
           <label for="settingsClientId">Default Client ID</label>
           <input type="text" id="settingsClientId" placeholder="For local mode">
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Auto-Update</legend>
+        <p class="muted" style="margin-bottom:8px;">Check for new releases on GitHub.</p>
+        <div class="update-status" id="updateStatus" style="font-size:12px;margin-bottom:6px;color:#585b70;"></div>
+        <div class="actions" style="padding:0">
+          <button id="checkUpdateBtn" class="btn secondary">Check for Update</button>
         </div>
       </fieldset>
 

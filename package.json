@@ -1,6 +1,6 @@
 {
   "name": "frozen-rpc",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
   "description": "Cross-platform desktop Discord Rich Presence injector",
   "main": "src/main.js",
   "type": "module",
@@ -65,11 +65,7 @@
         "AppImage",
         "deb",
         "rpm",
-        {
-          "target": "pacman",
-          "arch": ["x64"],
-          "artifactName": "${name}-${version}.pkg.tar.zst"
-        }
+        "pacman"
       ],
       "category": "Network",
       "synopsis": "Discord Rich Presence injector",
