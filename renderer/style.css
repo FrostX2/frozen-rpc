@@ -157,19 +157,19 @@ code { font-size:12px; background:#313244; padding:1px 4px; border-radius:3px; }
 
 .account-item span { flex:1; font-size:13px; }
 
-/* ── Presets ── */
+/* ── Profiles ── */
 
-.preset-item {
+.profile-item {
   display:flex; align-items:center; gap:8px;
   padding:6px 0; border-bottom:1px solid #313244;
 }
-.preset-item:last-child { border-bottom:none; }
+.profile-item:last-child { border-bottom:none; }
 
-.preset-info { flex:1; }
-.preset-info strong { display:block; font-size:13px; }
-.preset-preview { font-size:11px; color:#585b70; }
+.profile-info { flex:1; }
+.profile-info strong { display:block; font-size:13px; }
+.profile-preview { font-size:11px; color:#585b70; }
 
-.preset-actions { display:flex; gap:4px; }
+.profile-actions { display:flex; gap:4px; }
 
 /* ── Scrollbar ── */
 

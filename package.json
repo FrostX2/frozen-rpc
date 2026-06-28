@@ -1,6 +1,6 @@
 {
   "name": "frozen-rpc",
-  "version": "1.0.0-beta-1",
+  "version": "1.0.0-beta-2",
   "description": "Cross-platform desktop Discord Rich Presence injector",
   "main": "src/main.js",
   "type": "module",

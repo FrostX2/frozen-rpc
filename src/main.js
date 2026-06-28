@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { createServer } from "http";
 import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog, getLogPath } from "./logger.js";
-import { initDB, getAccounts, getAccountByToken, saveAccount, deleteAccount, getPresets, savePreset, deletePreset, exportAllData, importAllData, getConfig, setConfig } from "./db.js";
+import { initDB, getAccounts, getAccountByToken, saveAccount, deleteAccount, getProfiles, saveProfile, deleteProfile, exportAllData, importAllData, getConfig, setConfig } from "./db.js";
 import { buildAuthURL, exchangeCode, fetchDiscordUser, refreshToken } from "./auth.js";
 import { startLocalRPC, startGatewayRPC, stopRPC, updateActivity, isConnected, getMode } from "./rpc.js";
 
@@ -15,12 +15,13 @@ let mainWindow = null;
 let tray = null;
 
 function loadAppConfig() {
-  const defaults = { clientId: "", clientSecret: "", redirectUri: "http://localhost:53173/callback" };
+  const defaults = { clientId: "", clientSecret: "", redirectUri: "http://localhost:53173/callback", botToken: "" };
   try {
     return {
       clientId: getConfig("clientId") || defaults.clientId,
       clientSecret: getConfig("clientSecret") || defaults.clientSecret,
       redirectUri: getConfig("redirectUri") || defaults.redirectUri,
+      botToken: getConfig("botToken") || defaults.botToken,
     };
   } catch (err) {
     logError("loadAppConfig", err);
@@ -33,6 +34,7 @@ function saveAppConfig(cfg) {
     if (cfg.clientId !== undefined) setConfig("clientId", cfg.clientId);
     if (cfg.clientSecret !== undefined) setConfig("clientSecret", cfg.clientSecret);
     if (cfg.redirectUri !== undefined) setConfig("redirectUri", cfg.redirectUri);
+    if (cfg.botToken !== undefined) setConfig("botToken", cfg.botToken);
     logInfo("App config saved");
   } catch (err) {
     logError("saveAppConfig", err);
@@ -75,6 +77,10 @@ function createWindow() {
 
   mainWindow.loadFile(join(__dirname, "..", "renderer", "index.html"));
   mainWindow.setMenu(null);
+  mainWindow.webContents.on("did-finish-load", () => {
+    const css = getConfig("customCSS");
+    if (css) mainWindow.webContents.insertCSS(css);
+  });
 
   mainWindow.on("close", (event) => {
     if (!app.isQuitting) {
@@ -231,26 +237,31 @@ ipcMain.handle("start-local-rpc", async (_e, id, config) => {
   }
 });
 
-ipcMain.handle("start-gateway-rpc", async (_e, token, config) => {
+ipcMain.handle("start-gateway-rpc", async (_e, token, config, useBotToken) => {
   try {
     logInfo("Starting Gateway RPC...");
 
     let activeToken = token;
-    const account = getAccountByToken(token);
-    if (account && account.expires_at && Date.now() >= account.expires_at) {
-      logInfo("Token expired, refreshing...");
-      const appCfg = loadAppConfig();
-      const newData = await refreshToken(account, appCfg.clientId, appCfg.clientSecret);
-      activeToken = newData.access_token;
-      saveAccount({
-        ...account,
-        access_token: newData.access_token,
-        refresh_token: newData.refresh_token || account.refresh_token,
-        expires_at: Date.now() + newData.expires_in * 1000,
-      });
+    if (useBotToken) {
+      logInfo("Using bot token for Gateway connection");
+    } else {
+      const account = getAccountByToken(token);
+      if (account && account.expires_at && Date.now() >= account.expires_at) {
+        logInfo("Token expired, refreshing...");
+        const appCfgInner = loadAppConfig();
+        const newData = await refreshToken(account, appCfgInner.clientId, appCfgInner.clientSecret);
+        activeToken = newData.access_token;
+        saveAccount({
+          ...account,
+          access_token: newData.access_token,
+          refresh_token: newData.refresh_token || account.refresh_token,
+          expires_at: Date.now() + newData.expires_in * 1000,
+        });
+      }
     }
 
-    startGatewayRPC(activeToken, config, (status) => {
+    const appCfg = loadAppConfig();
+    startGatewayRPC(activeToken, config, appCfg.clientId, (status) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send("rpc-status", status);
       }
@@ -286,19 +297,19 @@ ipcMain.handle("update-activity", async (_e, config) => {
 ipcMain.handle("is-connected", () => isConnected());
 ipcMain.handle("get-mode", () => getMode());
 
-// ── Presets ──
+// ── Profiles ──
 
-ipcMain.handle("get-presets", () => getPresets());
+ipcMain.handle("get-profiles", () => getProfiles());
 
-ipcMain.handle("save-preset", (_e, name, config) => {
-  const id = savePreset(name, config);
-  logInfo(`Preset saved: "${name}" (id: ${id})`);
+ipcMain.handle("save-profile", (_e, name, config) => {
+  const id = saveProfile(name, config);
+  logInfo(`Profile saved: "${name}" (id: ${id})`);
   return id;
 });
 
-ipcMain.handle("delete-preset", (_e, id) => {
-  deletePreset(id);
-  logInfo(`Preset deleted: ${id}`);
+ipcMain.handle("delete-profile", (_e, id) => {
+  deleteProfile(id);
+  logInfo(`Profile deleted: ${id}`);
   return { success: true };
 });
 
@@ -342,11 +353,42 @@ ipcMain.handle("open-log-folder", () => {
   return { success: true };
 });
 
+// ── Custom CSS ──
+
+ipcMain.handle("get-custom-css", () => {
+  return getConfig("customCSS") || "";
+});
+
+ipcMain.handle("save-custom-css", (_e, css) => {
+  setConfig("customCSS", css);
+  logInfo("Custom CSS saved");
+  return { success: true };
+});
+
+ipcMain.handle("reload-window", () => {
+  mainWindow.reload();
+  return { success: true };
+});
+
+ipcMain.handle("show-message-box", async (_e, opts) => {
+  const result = await dialog.showMessageBox(mainWindow, opts);
+  return result;
+});
+
+// ── Auto-Update ──
+
+// ── Restart ──
+
+ipcMain.handle("restart-app", () => {
+  app.relaunch();
+  app.exit(0);
+});
+
 // ── Auto-Update ──
 
 ipcMain.handle("check-for-update", async () => {
   try {
-    const req = net.fetch("https://api.github.com/repos/FrostX2/frosty-rpc/releases/latest", {
+    const req = net.fetch("https://api.github.com/repos/FrostX2/frozen-rpc/releases/latest", {
       headers: { Accept: "application/vnd.github.v3+json", "User-Agent": "FrozenRPC" },
     });
     const res = await req;

@@ -24,7 +24,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     radio.addEventListener("change", () => {
       rpcMode = radio.value;
       $("localFields").style.display = radio.value === "local" ? "" : "none";
-      $("gatewayFields").style.display = radio.value === "gateway" ? "" : "none";
+      $("botFields").style.display = radio.value === "bot" ? "" : "none";
+      $("oauthFields").style.display = radio.value === "oauth" ? "" : "none";
     });
   });
 
@@ -112,13 +113,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     connected = conn;
     $("statusDot").className = "status-dot " + (conn ? "connected" : "disconnected");
     $("statusText").textContent = msg || (conn ? "Connected" : "Disconnected");
-    const mode = conn ? (rpcMode === "gateway" ? "via Gateway" : "via IPC") : "";
+    const mode = conn ? (rpcMode === "local" ? "via IPC" : rpcMode === "bot" ? "via Bot" : "via OAuth") : "";
     $("modeLabel").textContent = mode;
     $("connectBtn").disabled = conn;
     $("disconnectBtn").disabled = !conn;
     $("updateBtn").disabled = !conn;
     $("connectBtn").textContent = conn ? "Connected" : "Connect";
   }
+
+  $("botToken").addEventListener("change", async () => {
+    const cfg = await window.rpcAPI.getAppConfig();
+    cfg.botToken = $("botToken").value.trim();
+    await window.rpcAPI.saveAppConfig(cfg);
+  });
 
   window.rpcAPI.onStatusChange((status) => {
     setStatus(status.connected, status.message);
@@ -133,6 +140,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       $("connectBtn").textContent = "Connecting...";
       $("connectBtn").disabled = true;
       const result = await window.rpcAPI.startLocalRPC(clientId, readForm());
+      if (!result.success) {
+        setStatus(false, "Error: " + (result.error || "Failed"));
+        $("connectBtn").textContent = "Connect";
+        $("connectBtn").disabled = false;
+      }
+    } else if (rpcMode === "bot") {
+      const botToken = $("botToken").value.trim();
+      if (!botToken) { $("statusText").textContent = "Paste a bot token first"; return; }
+      $("connectBtn").textContent = "Connecting...";
+      $("connectBtn").disabled = true;
+      const result = await window.rpcAPI.startGatewayRPC(botToken, readForm(), true);
       if (!result.success) {
         setStatus(false, "Error: " + (result.error || "Failed"));
         $("connectBtn").textContent = "Connect";
@@ -269,38 +287,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (result.success) {
       $("statusText").textContent = "Data imported successfully!";
       renderAccounts();
-      renderPresets();
+      renderProfiles();
     }
   });
 
-  // ── Presets tab ──
+  // ── Profiles tab ──
 
-  $("savePresetBtn").addEventListener("click", async () => {
-    const name = $("presetName").value.trim();
-    if (!name) { $("statusText").textContent = "Enter a preset name"; return; }
-    await window.rpcAPI.savePreset(name, readForm());
-    $("presetName").value = "";
-    $("statusText").textContent = "Preset saved!";
+  $("saveProfileBtn").addEventListener("click", async () => {
+    const name = $("profileName").value.trim();
+    if (!name) { $("statusText").textContent = "Enter a profile name"; return; }
+    await window.rpcAPI.saveProfile(name, readForm());
+    $("profileName").value = "";
+    $("statusText").textContent = "Profile saved!";
     setTimeout(() => { if (!connected) $("statusText").textContent = "Disconnected"; }, 2000);
-    renderPresets();
+    renderProfiles();
   });
 
-  async function renderPresets() {
-    const presets = await window.rpcAPI.getPresets();
-    const container = $("presetList");
-    if (!presets.length) {
-      container.innerHTML = '<p class="muted">No presets saved yet.</p>';
+  async function renderProfiles() {
+    const profiles = await window.rpcAPI.getProfiles();
+    const container = $("profileList");
+    if (!profiles.length) {
+      container.innerHTML = '<p class="muted">No profiles saved yet.</p>';
       return;
     }
 
-    container.innerHTML = presets.map((p) => {
+    container.innerHTML = profiles.map((p) => {
       const cfg = JSON.parse(p.config);
-      return `<div class="preset-item">
-        <div class="preset-info">
+      return `<div class="profile-item">
+        <div class="profile-info">
           <strong>${p.name}</strong>
-          <span class="preset-preview">${cfg.details || ""}${cfg.details && cfg.state ? " — " : ""}${cfg.state || ""}</span>
+          <span class="profile-preview">${cfg.details || ""}${cfg.details && cfg.state ? " — " : ""}${cfg.state || ""}</span>
         </div>
-        <div class="preset-actions">
+        <div class="profile-actions">
           <button class="btn-small" data-load="${p.id}">Load</button>
           <button class="btn-small danger" data-del="${p.id}">Delete</button>
         </div>
@@ -310,8 +328,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.querySelectorAll("[data-load]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = btn.dataset.load;
-        const presets = await window.rpcAPI.getPresets();
-        const p = presets.find((x) => x.id === id);
+        const profiles = await window.rpcAPI.getProfiles();
+        const p = profiles.find((x) => x.id === id);
         if (p) {
           fillFormFromConfig(JSON.parse(p.config));
           $("statusText").textContent = `Loaded "${p.name}"`;
@@ -323,8 +341,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     container.querySelectorAll("[data-del]").forEach((btn) => {
       btn.addEventListener("click", async () => {
-        await window.rpcAPI.deletePreset(parseInt(btn.dataset.del, 10));
-        renderPresets();
+        await window.rpcAPI.deleteProfile(parseInt(btn.dataset.del, 10));
+        renderProfiles();
       });
     });
   }
@@ -334,7 +352,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadSettings() {
     const cfg = await window.rpcAPI.getAppConfig();
     if (cfg) $("settingsClientId").value = cfg.clientId || "";
+    const css = await window.rpcAPI.getCustomCSS();
+    if (css) $("customCSS").value = css;
   }
+
+  $("applyCSSBtn").addEventListener("click", async () => {
+    const css = $("customCSS").value;
+    await window.rpcAPI.saveCustomCSS(css);
+    const { response } = await window.rpcAPI.showMessageBox({
+      type: "question",
+      title: "Custom Appearance",
+      message: "Custom CSS saved. Reload now to apply?",
+      buttons: ["Reload now", "Reload later"],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (response === 0) {
+      window.rpcAPI.reloadWindow();
+    }
+  });
+
+  $("restartBtn").addEventListener("click", () => {
+    window.rpcAPI.restartApp();
+  });
 
   $("settingsClientId").addEventListener("change", async () => {
     const cfg = await window.rpcAPI.getAppConfig();
@@ -395,8 +435,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     $("authClientSecret").value = appConfig.clientSecret || "";
     $("authRedirectUri").value = appConfig.redirectUri || "http://localhost:53173/callback";
     $("settingsClientId").value = appConfig.clientId || "";
+    if (appConfig.botToken) $("botToken").value = appConfig.botToken;
   }
   checkLoginReady();
   await renderAccounts();
-  await renderPresets();
+  await renderProfiles();
 });

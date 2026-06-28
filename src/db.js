@@ -36,10 +36,10 @@ function migrateOldDB() {
       `).run(acc.id, acc.username, acc.avatar, acc.access_token, acc.refresh_token, acc.expires_at);
     }
 
-    const oldPresets = oldDB.prepare("SELECT * FROM presets").all();
-    for (const p of oldPresets) {
+    const oldProfiles = oldDB.prepare("SELECT * FROM presets").all();
+    for (const p of oldProfiles) {
       db.prepare(`
-        INSERT OR IGNORE INTO presets (id, name, config, created_at)
+        INSERT OR IGNORE INTO profiles (id, name, config, created_at)
         VALUES (?, ?, ?, ?)
       `).run(p.id, p.name, p.config, p.created_at);
     }
@@ -70,7 +70,7 @@ export function initDB() {
         refresh_token TEXT,
         expires_at INTEGER
       );
-      CREATE TABLE IF NOT EXISTS presets (
+      CREATE TABLE IF NOT EXISTS profiles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         config TEXT NOT NULL,
@@ -126,35 +126,35 @@ export function deleteAccount(id) {
   getDB().prepare("DELETE FROM accounts WHERE id = ?").run(id);
 }
 
-export function getPresets() {
-  return getDB().prepare("SELECT * FROM presets ORDER BY name").all();
+export function getProfiles() {
+  return getDB().prepare("SELECT * FROM profiles ORDER BY name").all();
 }
 
-export function getPreset(id) {
-  return getDB().prepare("SELECT * FROM presets WHERE id = ?").get(id);
+export function getProfile(id) {
+  return getDB().prepare("SELECT * FROM profiles WHERE id = ?").get(id);
 }
 
-export function savePreset(name, config) {
-  const existing = getDB().prepare("SELECT id FROM presets WHERE name = ?").get(name);
+export function saveProfile(name, config) {
+  const existing = getDB().prepare("SELECT id FROM profiles WHERE name = ?").get(name);
   if (existing) {
-    getDB().prepare("UPDATE presets SET config = ?, created_at = unixepoch() WHERE id = ?").run(JSON.stringify(config), existing.id);
-    logInfo(`Preset updated: "${name}"`);
+    getDB().prepare("UPDATE profiles SET config = ?, created_at = unixepoch() WHERE id = ?").run(JSON.stringify(config), existing.id);
+    logInfo(`Profile updated: "${name}"`);
     return existing.id;
   }
-  const result = getDB().prepare("INSERT INTO presets (name, config) VALUES (?, ?)").run(name, JSON.stringify(config));
-  logInfo(`Preset created: "${name}"`);
+  const result = getDB().prepare("INSERT INTO profiles (name, config) VALUES (?, ?)").run(name, JSON.stringify(config));
+  logInfo(`Profile created: "${name}"`);
   return result.lastInsertRowid;
 }
 
-export function deletePreset(id) {
-  getDB().prepare("DELETE FROM presets WHERE id = ?").run(id);
+export function deleteProfile(id) {
+  getDB().prepare("DELETE FROM profiles WHERE id = ?").run(id);
 }
 
 export function exportAllData() {
   return {
     config: getDB().prepare("SELECT * FROM config").all(),
     accounts: getAccounts(),
-    presets: getPresets(),
+    profiles: getProfiles(),
   };
 }
 
@@ -174,10 +174,10 @@ export function importAllData(data) {
         `).run(acc.id, acc.username, acc.avatar, acc.access_token, acc.refresh_token, acc.expires_at);
       }
     }
-    if (data.presets) {
-      for (const p of data.presets) {
+    if (data.profiles) {
+      for (const p of data.profiles) {
         database.prepare(`
-          INSERT OR REPLACE INTO presets (id, name, config, created_at)
+          INSERT OR REPLACE INTO profiles (id, name, config, created_at)
           VALUES (?, ?, ?, ?)
         `).run(p.id, p.name, p.config, p.created_at);
       }

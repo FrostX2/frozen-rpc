@@ -20,7 +20,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="rpc">RPC</button>
     <button class="tab" data-tab="auth">Accounts</button>
-    <button class="tab" data-tab="presets">Presets</button>
+    <button class="tab" data-tab="profiles">Profiles</button>
     <button class="tab" data-tab="settings">Settings</button>
   </div>
 
@@ -32,7 +32,8 @@
         <legend>Mode</legend>
         <div class="mode-select">
           <label><input type="radio" name="mode" value="local" checked> Local (Discord client)</label>
-          <label><input type="radio" name="mode" value="gateway"> Inject (OAuth2 token)</label>
+          <label><input type="radio" name="mode" value="bot"> Inject Token (Bot only)</label>
+          <label><input type="radio" name="mode" value="oauth"> Inject Scope (OAuth2 token)</label>
         </div>
       </fieldset>
 
@@ -43,7 +44,14 @@
         </div>
       </div>
 
-      <div id="gatewayFields" style="display:none">
+      <div id="botFields" style="display:none">
+        <div class="form-group">
+          <label for="botToken">Bot Token</label>
+          <input type="password" id="botToken" placeholder="Paste your bot token here">
+        </div>
+      </div>
+
+      <div id="oauthFields" style="display:none">
         <div class="form-group">
           <label for="accountSelect">Select Account</label>
           <select id="accountSelect"><option value="">No accounts — go to Accounts tab</option></select>
@@ -199,24 +207,24 @@
       </fieldset>
     </div>
 
-    <!-- ═══════ PRESETS TAB ═══════ -->
-    <div class="tab-content" id="tab-presets">
+    <!-- ═══════ PROFILES TAB ═══════ -->
+    <div class="tab-content" id="tab-profiles">
       <fieldset>
-        <legend>Save Current Config as Preset</legend>
+        <legend>Save Current Config as Profile</legend>
         <div class="form-row">
           <div class="form-group" style="flex:2">
-            <input type="text" id="presetName" placeholder="Preset name">
+            <input type="text" id="profileName" placeholder="Profile name">
           </div>
           <div class="form-group" style="flex:1">
-            <button id="savePresetBtn" class="btn primary" style="height:100%">Save</button>
+            <button id="saveProfileBtn" class="btn primary" style="height:100%">Save</button>
           </div>
         </div>
       </fieldset>
 
       <fieldset>
-        <legend>Saved Presets</legend>
-        <div id="presetList">
-          <p class="muted">No presets saved yet.</p>
+        <legend>Saved Profiles</legend>
+        <div id="profileList">
+          <p class="muted">No profiles saved yet.</p>
         </div>
       </fieldset>
     </div>
@@ -229,6 +237,16 @@
         <div class="form-group">
           <label for="settingsClientId">Default Client ID</label>
           <input type="text" id="settingsClientId" placeholder="For local mode">
+        </div>
+        <button id="restartBtn" class="btn danger" style="width:100%;margin-top:8px">Restart App</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Custom Appearance</legend>
+        <p class="muted">Override the app theme with your own CSS.</p>
+        <textarea id="customCSS" style="width:100%;height:150px;background:#11111b;color:#cdd6f4;border:1px solid #313244;border-radius:5px;padding:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder="/* Your custom CSS here */"></textarea>
+        <div class="actions" style="padding:4px 0 0">
+          <button id="applyCSSBtn" class="btn primary">Apply</button>
         </div>
       </fieldset>
 
