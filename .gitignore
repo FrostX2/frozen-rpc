@@ -13,3 +13,6 @@ flatpak/build-dir/
 flatpak/*.flatpak
 aur/
 githubtoken.txt
+commit-all.sh
+commit-specific.sh
+repo.txt
