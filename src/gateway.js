@@ -1,7 +1,10 @@
 import WebSocket from "ws";
 import { logInfo, logWarn, logError } from "./logger.js";
+import { buildActivity } from "./activity.js";
 
 const GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json";
+const MAX_RECONNECT_DELAY = 30000;
+const INITIAL_RECONNECT_DELAY = 2000;
 
 let ws = null;
 let heartbeatInterval = null;
@@ -10,39 +13,10 @@ let sessionId = null;
 let onStatusChange = null;
 let currentActivity = null;
 
-function buildActivityPayload(config) {
-  const activity = { name: "Custom RPC", type: 0 };
-  if (config.details) activity.details = config.details;
-  if (config.state) activity.state = config.state;
-  if (config.startTimestamp || config.endTimestamp) {
-    activity.timestamps = {};
-    if (config.startTimestamp) activity.timestamps.start = config.startTimestamp;
-    if (config.endTimestamp) activity.timestamps.end = config.endTimestamp;
-  }
-  if (config.largeImageKey || config.largeImageText || config.smallImageKey || config.smallImageText) {
-    activity.assets = {};
-    if (config.largeImageKey) activity.assets.large_image = config.largeImageKey;
-    if (config.largeImageText) activity.assets.large_text = config.largeImageText;
-    if (config.smallImageKey) activity.assets.small_image = config.smallImageKey;
-    if (config.smallImageText) activity.assets.small_text = config.smallImageText;
-  }
-  if (config.partyId || config.partySize || config.partyMax) {
-    activity.party = {};
-    if (config.partyId) activity.party.id = config.partyId;
-    if (config.partySize !== undefined || config.partyMax !== undefined) {
-      activity.party.size = [config.partySize || 0, config.partyMax || 0];
-    }
-  }
-  if (config.matchSecret || config.joinSecret || config.spectateSecret) {
-    activity.secrets = {};
-    if (config.matchSecret) activity.secrets.match = config.matchSecret;
-    if (config.joinSecret) activity.secrets.join = config.joinSecret;
-    if (config.spectateSecret) activity.secrets.spectate = config.spectateSecret;
-  }
-  if (config.buttons?.length) activity.buttons = config.buttons;
-  if (config.instance !== undefined) activity.instance = config.instance;
-  return activity;
-}
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let connectionConfig = null;
+let intentionalClose = false;
 
 function send(data) {
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -78,18 +52,49 @@ function stopHeartbeat() {
   }
 }
 
-export function connectGateway(token, config, statusCallback) {
-  if (ws) disconnectGateway();
-  logInfo("Connecting to Discord Gateway...");
+function scheduleReconnect() {
+  if (intentionalClose || !connectionConfig) return;
+  if (reconnectTimer) return;
 
-  onStatusChange = statusCallback;
-  currentActivity = buildActivityPayload(config);
+  reconnectAttempts++;
+  const delay = Math.min(
+    INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1),
+    MAX_RECONNECT_DELAY
+  );
+
+  logInfo(`Gateway reconnect scheduled in ${Math.round(delay / 1000)}s (attempt ${reconnectAttempts})`);
+
+  if (onStatusChange) {
+    onStatusChange({ connected: false, message: `Reconnecting in ${Math.round(delay / 1000)}s...` });
+  }
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connect();
+  }, delay);
+}
+
+function cancelReconnect() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  reconnectAttempts = 0;
+}
+
+function connect() {
+  cancelReconnect();
+  if (!connectionConfig) return;
+
+  const { token } = connectionConfig;
+
+  logInfo("Connecting to Discord Gateway...");
+  if (onStatusChange) onStatusChange({ connected: false, message: "Connecting to Gateway..." });
 
   ws = new WebSocket(GATEWAY);
 
   ws.on("open", () => {
     logInfo("Gateway WebSocket opened");
-    if (onStatusChange) onStatusChange({ connected: false, message: "Connecting to Gateway..." });
   });
 
   ws.on("message", (raw) => {
@@ -122,6 +127,7 @@ export function connectGateway(token, config, statusCallback) {
         sequence = msg.s;
         if (msg.t === "READY") {
           sessionId = msg.d.session_id;
+          reconnectAttempts = 0;
           logInfo(`Gateway ready: ${msg.d.user.username} (session: ${sessionId})`);
           if (onStatusChange) onStatusChange({ connected: true, message: `Connected as ${msg.d.user.username}` });
         }
@@ -134,7 +140,8 @@ export function connectGateway(token, config, statusCallback) {
       }
       case 9: {
         logError("Gateway", new Error("Invalid session (OP 9)"));
-        if (onStatusChange) onStatusChange({ connected: false, message: "Invalid session" });
+        if (onStatusChange) onStatusChange({ connected: false, message: "Invalid session, reconnecting..." });
+        scheduleReconnect();
         break;
       }
       default: {
@@ -150,6 +157,7 @@ export function connectGateway(token, config, statusCallback) {
     ws = null;
     logWarn(`Gateway closed: code=${code} reason=${reason || "none"}`);
     if (onStatusChange) onStatusChange({ connected: false, message: "Disconnected from Gateway" });
+    scheduleReconnect();
   });
 
   ws.on("error", (err) => {
@@ -158,14 +166,27 @@ export function connectGateway(token, config, statusCallback) {
   });
 }
 
+export function connectGateway(token, config, statusCallback) {
+  if (ws) disconnectGateway();
+  intentionalClose = false;
+
+  onStatusChange = statusCallback;
+  currentActivity = { name: "Custom RPC", type: 0, ...buildActivity(config) };
+  connectionConfig = { token };
+
+  connect();
+}
+
 export function updateGatewayActivity(config) {
-  currentActivity = buildActivityPayload(config);
+  currentActivity = { name: "Custom RPC", type: 0, ...buildActivity(config) };
   sendPresence();
   logInfo("Gateway activity updated");
 }
 
 export function disconnectGateway() {
   logInfo("Disconnecting from Gateway...");
+  intentionalClose = true;
+  cancelReconnect();
   stopHeartbeat();
   if (ws) {
     ws.close(1000, "User requested");
@@ -175,6 +196,8 @@ export function disconnectGateway() {
   sequence = null;
   currentActivity = null;
   onStatusChange = null;
+  connectionConfig = null;
+  reconnectAttempts = 0;
 }
 
 export function isGatewayConnected() {

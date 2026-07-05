@@ -10,7 +10,7 @@
     <category>Network</category>
     <category>Utility</category>
   </categories>
-  <url type="homepage">https://github.com/FrostX2/frosty-rpc</url>
+  <url type="homepage">https://github.com/FrostX2/frozen-rpc</url>
   <project_license>MIT</project_license>
   <metadata_license>MIT</metadata_license>
 </component>

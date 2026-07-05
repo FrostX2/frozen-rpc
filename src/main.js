@@ -3,10 +3,11 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { createServer } from "http";
-import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog, getLogPath } from "./logger.js";
-import { initDB, getAccounts, getAccountByToken, saveAccount, deleteAccount, getProfiles, saveProfile, deleteProfile, exportAllData, importAllData, getConfig, setConfig } from "./db.js";
+import { initLogger, logInfo, logWarn, logError, getLogContent, clearLog } from "./logger.js";
+import { initDB, flushDB, getAccounts, saveAccount, deleteAccount, getProfiles, saveProfile, deleteProfile, exportAllData, importAllData, getConfig, setConfig } from "./db.js";
 import { buildAuthURL, exchangeCode, fetchDiscordUser, refreshToken } from "./auth.js";
 import { startLocalRPC, startGatewayRPC, stopRPC, updateActivity, isConnected, getMode } from "./rpc.js";
+import { encrypt, decrypt } from "./crypto.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ICON_PATH = join(__dirname, "..", "assets", "icon.png");
@@ -19,9 +20,9 @@ function loadAppConfig() {
   try {
     return {
       clientId: getConfig("clientId") || defaults.clientId,
-      clientSecret: getConfig("clientSecret") || defaults.clientSecret,
+      clientSecret: decrypt(getConfig("clientSecret")) || defaults.clientSecret,
       redirectUri: getConfig("redirectUri") || defaults.redirectUri,
-      botToken: getConfig("botToken") || defaults.botToken,
+      botToken: decrypt(getConfig("botToken")) || defaults.botToken,
     };
   } catch (err) {
     logError("loadAppConfig", err);
@@ -32,9 +33,9 @@ function loadAppConfig() {
 function saveAppConfig(cfg) {
   try {
     if (cfg.clientId !== undefined) setConfig("clientId", cfg.clientId);
-    if (cfg.clientSecret !== undefined) setConfig("clientSecret", cfg.clientSecret);
+    if (cfg.clientSecret !== undefined) setConfig("clientSecret", encrypt(cfg.clientSecret));
     if (cfg.redirectUri !== undefined) setConfig("redirectUri", cfg.redirectUri);
-    if (cfg.botToken !== undefined) setConfig("botToken", cfg.botToken);
+    if (cfg.botToken !== undefined) setConfig("botToken", encrypt(cfg.botToken));
     logInfo("App config saved");
   } catch (err) {
     logError("saveAppConfig", err);
@@ -69,10 +70,26 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 580,
     height: 760,
-    resizable: false,
+    minWidth: 420,
+    minHeight: 600,
     title: "Frozen RPC",
     icon: ICON_PATH,
     webPreferences: { preload: join(__dirname, "preload.cjs") },
+  });
+
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self'; " +
+          "img-src 'self' https://cdn.discordapp.com; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "connect-src 'self' https://discord.com wss://gateway.discord.gg http://localhost:*; " +
+          "font-src 'self'"
+        ],
+      },
+    });
   });
 
   mainWindow.loadFile(join(__dirname, "..", "renderer", "index.html"));
@@ -127,7 +144,7 @@ app.on("window-all-closed", () => {
 });
 
 app.isQuitting = false;
-app.on("before-quit", () => { app.isQuitting = true; });
+app.on("before-quit", () => { app.isQuitting = true; flushDB(); });
 
 // ── Config ──
 
@@ -140,7 +157,24 @@ ipcMain.handle("save-app-config", (_e, cfg) => {
 
 // ── Accounts ──
 
-ipcMain.handle("get-accounts", () => getAccounts());
+function decryptAccount(acc) {
+  if (!acc) return null;
+  return {
+    ...acc,
+    access_token: decrypt(acc.access_token),
+    refresh_token: decrypt(acc.refresh_token),
+  };
+}
+
+function findAccountByDecryptedToken(rawToken) {
+  const accounts = getAccounts();
+  for (const acc of accounts) {
+    if (decrypt(acc.access_token) === rawToken) return acc;
+  }
+  return null;
+}
+
+ipcMain.handle("get-accounts", () => getAccounts().map(decryptAccount));
 
 ipcMain.handle("delete-account", (_e, id) => {
   deleteAccount(id);
@@ -160,8 +194,8 @@ ipcMain.handle("start-oauth", async (_e, { clientId, clientSecret, redirectUri }
       id: user.id,
       username: user.username,
       avatar: `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`,
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
+      access_token: encrypt(tokenData.access_token),
+      refresh_token: encrypt(tokenData.refresh_token),
       expires_at: Date.now() + tokenData.expires_in * 1000,
     });
 
@@ -207,13 +241,32 @@ function startAuthServer(clientId, clientSecret, redirectUri) {
       res.end();
     });
 
-    server.listen(53173, () => {
-      const authUrl = buildAuthURL(clientId, redirectUri);
-      logInfo(`Opening browser for OAuth: ${authUrl}`);
-      shell.openExternal(authUrl);
+    const parsedUrl = new URL(redirectUri);
+    const preferredPort = parseInt(parsedUrl.port, 10) || 53173;
+
+    const tryListen = (port) => {
+      server.listen(port, () => {
+        const actualPort = server.address().port;
+        const actualRedirect = actualPort !== preferredPort
+          ? `http://localhost:${actualPort}/callback`
+          : redirectUri;
+
+        const authUrl = buildAuthURL(clientId, actualRedirect);
+        logInfo(`Opening browser for OAuth (port ${actualPort}): ${authUrl}`);
+        shell.openExternal(authUrl);
+      });
+    };
+
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        logWarn(`Port ${preferredPort} in use, trying port 0...`);
+        tryListen(0);
+      } else {
+        reject(err);
+      }
     });
 
-    server.on("error", reject);
+    tryListen(preferredPort);
   });
 }
 
@@ -245,7 +298,7 @@ ipcMain.handle("start-gateway-rpc", async (_e, token, config, useBotToken) => {
     if (useBotToken) {
       logInfo("Using bot token for Gateway connection");
     } else {
-      const account = getAccountByToken(token);
+      const account = decryptAccount(findAccountByDecryptedToken(token));
       if (account && account.expires_at && Date.now() >= account.expires_at) {
         logInfo("Token expired, refreshing...");
         const appCfgInner = loadAppConfig();
@@ -253,8 +306,8 @@ ipcMain.handle("start-gateway-rpc", async (_e, token, config, useBotToken) => {
         activeToken = newData.access_token;
         saveAccount({
           ...account,
-          access_token: newData.access_token,
-          refresh_token: newData.refresh_token || account.refresh_token,
+          access_token: encrypt(newData.access_token),
+          refresh_token: encrypt(newData.refresh_token || account.refresh_token),
           expires_at: Date.now() + newData.expires_in * 1000,
         });
       }
@@ -322,7 +375,15 @@ ipcMain.handle("export-data", async () => {
   });
   if (!filePath) return { success: false };
   const data = exportAllData();
-  writeFileSync(filePath, JSON.stringify(data, null, 2));
+  const decrypted = {
+    ...data,
+    accounts: data.accounts.map(decryptAccount),
+    config: data.config.map((row) => ({
+      key: row.key,
+      value: ["clientSecret", "botToken"].includes(row.key) ? decrypt(row.value) : row.value,
+    })),
+  };
+  writeFileSync(filePath, JSON.stringify(decrypted, null, 2));
   logInfo(`Data exported to ${filePath}`);
   return { success: true, path: filePath };
 });
@@ -334,7 +395,21 @@ ipcMain.handle("import-data", async () => {
   });
   if (!filePaths?.length) return { success: false };
   const raw = readFileSync(filePaths[0], "utf-8");
-  importAllData(JSON.parse(raw));
+  const imported = JSON.parse(raw);
+  if (imported.accounts) {
+    imported.accounts = imported.accounts.map((acc) => ({
+      ...acc,
+      access_token: encrypt(acc.access_token),
+      refresh_token: encrypt(acc.refresh_token),
+    }));
+  }
+  if (imported.config) {
+    imported.config = imported.config.map((row) => ({
+      key: row.key,
+      value: ["clientSecret", "botToken"].includes(row.key) ? encrypt(row.value) : row.value,
+    }));
+  }
+  importAllData(imported);
   logInfo(`Data imported from ${filePaths[0]}`);
   return { success: true };
 });
@@ -380,6 +455,7 @@ ipcMain.handle("show-message-box", async (_e, opts) => {
 // ── Restart ──
 
 ipcMain.handle("restart-app", () => {
+  flushDB();
   app.relaunch();
   app.exit(0);
 });

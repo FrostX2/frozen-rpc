@@ -13,4 +13,4 @@ fi
 
 [ ! -d node_modules ] && npm install
 echo "Starting Frozen RPC..."
-exec npx electron .
+exec node node_modules/.bin/electron .

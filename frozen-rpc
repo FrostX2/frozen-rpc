@@ -2,23 +2,40 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$DIR"
+DISTRO_DIR="$DIR/shell/distro"
 
 OS="$(uname -s)"
 
 case "$OS" in
-  Darwin|Linux)
-    if [ -x node_modules/.bin/electron ]; then
-      exec node_modules/.bin/electron .
-    elif command -v npm &>/dev/null; then
-      exec npm start
+  Darwin)
+    exec bash "$DISTRO_DIR/macos.sh"
+    ;;
+  Linux)
+    if [ -f /etc/os-release ]; then
+      . /etc/os-release
+      case "$ID" in
+        arch|manjaro|endeavouros)
+          exec bash "$DISTRO_DIR/linux-arch.sh"
+          ;;
+        debian|ubuntu|linuxmint|pop|elementary|zorin)
+          exec bash "$DISTRO_DIR/linux-debian.sh"
+          ;;
+        fedora|rhel|centos)
+          exec bash "$DISTRO_DIR/linux-fedora.sh"
+          ;;
+        opensuse*|suse)
+          exec bash "$DISTRO_DIR/linux-opensuse.sh"
+          ;;
+        *)
+          exec bash "$DISTRO_DIR/linux-generic.sh"
+          ;;
+      esac
     else
-      echo "Error: Node.js/npm not found. Install Node.js 18+ first."
-      exit 1
+      exec bash "$DISTRO_DIR/linux-generic.sh"
     fi
     ;;
   MINGW*|MSYS*|CYGWIN*)
-    exec npm start
+    exec cmd.exe /c "$DISTRO_DIR/windows.bat"
     ;;
   *)
     echo "Unsupported OS: $OS"

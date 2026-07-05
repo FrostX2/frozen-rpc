@@ -5,6 +5,10 @@ import { logInfo, logError, logWarn } from "./logger.js";
 
 const DATA_FILE = "app-data.json";
 const PROFILES_DIR = "profiles";
+const WRITE_DEBOUNCE_MS = 500;
+
+let cache = null;
+let writeTimer = null;
 
 function getDataPath() {
   return join(app.getPath("userData"), DATA_FILE);
@@ -16,19 +20,45 @@ function getProfilesDir() {
   return dir;
 }
 
-function readData() {
+function loadCache() {
+  if (cache) return cache;
   try {
     const path = getDataPath();
-    if (!existsSync(path)) return { config: {}, accounts: [] };
-    return JSON.parse(readFileSync(path, "utf-8"));
+    if (!existsSync(path)) {
+      cache = { config: {}, accounts: [] };
+      return cache;
+    }
+    cache = JSON.parse(readFileSync(path, "utf-8"));
+    if (!cache.config) cache.config = {};
+    if (!cache.accounts) cache.accounts = [];
+    return cache;
   } catch (err) {
     logError("readData", err);
-    return { config: {}, accounts: [] };
+    cache = { config: {}, accounts: [] };
+    return cache;
   }
 }
 
-function writeData(data) {
-  writeFileSync(getDataPath(), JSON.stringify(data, null, 2));
+function scheduleWrite() {
+  if (writeTimer) clearTimeout(writeTimer);
+  writeTimer = setTimeout(() => {
+    writeTimer = null;
+    if (!cache) return;
+    try {
+      writeFileSync(getDataPath(), JSON.stringify(cache, null, 2));
+    } catch (err) {
+      logError("writeData", err);
+    }
+  }, WRITE_DEBOUNCE_MS);
+}
+
+function flushWrite() {
+  if (writeTimer) {
+    clearTimeout(writeTimer);
+    writeTimer = null;
+  }
+  if (!cache) return;
+  writeFileSync(getDataPath(), JSON.stringify(cache, null, 2));
 }
 
 function sanitizeFilename(name) {
@@ -36,49 +66,52 @@ function sanitizeFilename(name) {
 }
 
 export function initDB() {
-  getDataPath();
+  loadCache();
   getProfilesDir();
   logInfo("Storage initialized at " + app.getPath("userData"));
 }
 
+export function flushDB() {
+  flushWrite();
+}
+
 export function getConfig(key) {
-  return readData().config[key] ?? null;
+  return loadCache().config[key] ?? null;
 }
 
 export function setConfig(key, value) {
-  const data = readData();
-  data.config[key] = value;
-  writeData(data);
+  loadCache().config[key] = value;
+  scheduleWrite();
 }
 
 export function getAccounts() {
-  return readData().accounts.sort((a, b) => a.username.localeCompare(b.username));
+  return [...loadCache().accounts].sort((a, b) => a.username.localeCompare(b.username));
 }
 
 export function getAccount(id) {
-  return readData().accounts.find((a) => a.id === id) || null;
+  return loadCache().accounts.find((a) => a.id === id) || null;
 }
 
 export function getAccountByToken(token) {
-  return readData().accounts.find((a) => a.access_token === token) || null;
+  return loadCache().accounts.find((a) => a.access_token === token) || null;
 }
 
 export function saveAccount(account) {
-  const data = readData();
+  const data = loadCache();
   const idx = data.accounts.findIndex((a) => a.id === account.id);
   if (idx >= 0) {
     data.accounts[idx] = account;
   } else {
     data.accounts.push(account);
   }
-  writeData(data);
+  scheduleWrite();
   logInfo(`Account saved: ${account.username} (${account.id})`);
 }
 
 export function deleteAccount(id) {
-  const data = readData();
+  const data = loadCache();
   data.accounts = data.accounts.filter((a) => a.id !== id);
-  writeData(data);
+  scheduleWrite();
 }
 
 export function getProfiles() {
@@ -127,7 +160,7 @@ export function deleteProfile(name) {
 }
 
 export function exportAllData() {
-  const data = readData();
+  const data = loadCache();
   return {
     config: Object.entries(data.config).map(([key, value]) => ({ key, value })),
     accounts: data.accounts,

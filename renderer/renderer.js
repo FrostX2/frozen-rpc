@@ -52,9 +52,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (label && url) buttons.push({ label, url });
     });
 
+    let partySize = $("partySize").value !== "" ? parseInt($("partySize").value, 10) : undefined;
+    let partyMax = $("partyMax").value !== "" ? parseInt($("partyMax").value, 10) : undefined;
+    if (partySize !== undefined && partySize < 0) partySize = 0;
+    if (partyMax !== undefined && partyMax < 0) partyMax = 0;
+    if (partySize !== undefined && partyMax !== undefined && partySize > partyMax) {
+      partyMax = partySize;
+    }
+
     return {
-      details: $("details").value.trim(),
-      state: $("state").value.trim(),
+      details: $("details").value.trim().slice(0, 128),
+      state: $("state").value.trim().slice(0, 128),
       largeImageKey: $("largeImageKey").value.trim(),
       largeImageText: $("largeImageText").value.trim(),
       smallImageKey: $("smallImageKey").value.trim(),
@@ -62,14 +70,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       startTimestamp,
       endTimestamp,
       partyId: $("partyId").value.trim(),
-      partySize: $("partySize").value !== "" ? parseInt($("partySize").value, 10) : undefined,
-      partyMax: $("partyMax").value !== "" ? parseInt($("partyMax").value, 10) : undefined,
+      partySize,
+      partyMax,
       joinSecret: $("joinSecret").value.trim(),
       spectateSecret: $("spectateSecret").value.trim(),
       matchSecret: $("matchSecret").value.trim(),
       instance: $("instance").checked,
       showTime: $("showTime").checked,
-      buttons,
+      buttons: buttons.slice(0, 2),
     };
   }
 
@@ -137,6 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (rpcMode === "local") {
       const clientId = $("clientId").value.trim();
       if (!clientId) { $("statusText").textContent = "Enter a Client ID"; return; }
+      if (!/^\d{17,20}$/.test(clientId)) { $("statusText").textContent = "Client ID must be a numeric Discord snowflake"; return; }
       $("connectBtn").textContent = "Connecting...";
       $("connectBtn").disabled = true;
       const result = await window.rpcAPI.startLocalRPC(clientId, readForm());
@@ -395,13 +404,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadLog();
   });
 
-  // Auto-refresh log every 3s when on Settings tab
-  setInterval(async () => {
-    const settingsTab = document.getElementById("tab-settings");
-    if (settingsTab && settingsTab.classList.contains("active")) {
-      loadLog();
-    }
-  }, 3000);
+  // Auto-refresh log when Settings tab is active
+  let logPollTimer = null;
+  function startLogPoll() {
+    stopLogPoll();
+    loadLog();
+    logPollTimer = setInterval(loadLog, 3000);
+  }
+  function stopLogPoll() {
+    if (logPollTimer) { clearInterval(logPollTimer); logPollTimer = null; }
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (tab.dataset.tab === "settings") startLogPoll();
+      else stopLogPoll();
+    });
+  });
 
   // ── Auto-Update ──
 
