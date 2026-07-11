@@ -16,3 +16,4 @@ githubtoken.txt
 commit-all.sh
 commit-specific.sh
 repo.txt
+flatpak/
