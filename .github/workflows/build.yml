@@ -97,7 +97,7 @@ jobs:
           mkdir release-assets
           find . -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.pacman" -o -name "*.exe" -o -name "*.msi" -o -name "*.dmg" -o -name "*.pkg" \) -exec cp {} release-assets/ \;
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Frozen RPC ${{ github.ref_name }}
           body_path: release-notes.md
